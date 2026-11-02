@@ -1,0 +1,91 @@
+import itertools
+import matplotlib.pyplot as plt
+import networkx as nx
+
+AWAL = "SPPG Tanamodindi"
+
+KOORDINAT = {
+    AWAL: (-0.904490, 119.898712),
+    "SDIT Ibnul Mubarok": (-0.898299, 119.896746),
+    "SDN Tanamodindi": (-0.897568, 119.892417),
+    "SDN Inpres 1 Tanamodindi": (-0.891218, 119.890155),
+    "SDN Inpres 2 Tanamodindi": (-0.901088, 119.892872),
+    "SD Negeri 23 Palu": (-0.901400, 119.892700)
+}
+
+JARAK = {
+    ("SPPG Tanamodindi", "SDIT Ibnul Mubarok"): 0.7223,
+    ("SPPG Tanamodindi", "SDN Tanamodindi"): 1.0403,
+    ("SPPG Tanamodindi", "SDN Inpres 1 Tanamodindi"): 1.7559,
+    ("SPPG Tanamodindi", "SDN Inpres 2 Tanamodindi"): 0.7515,
+    ("SPPG Tanamodindi", "SD Negeri 23 Palu"): 0.7516,
+    ("SDIT Ibnul Mubarok", "SDN Tanamodindi"): 0.4881,
+    ("SDIT Ibnul Mubarok", "SDN Inpres 1 Tanamodindi"): 1.0756,
+    ("SDIT Ibnul Mubarok", "SDN Inpres 2 Tanamodindi"): 0.5307,
+    ("SDIT Ibnul Mubarok", "SD Negeri 23 Palu"): 0.5668,
+    ("SDN Tanamodindi", "SDN Inpres 1 Tanamodindi"): 0.7495,
+    ("SDN Tanamodindi", "SDN Inpres 2 Tanamodindi"): 0.3947,
+    ("SDN Tanamodindi", "SD Negeri 23 Palu"): 0.4273,
+    ("SDN Inpres 1 Tanamodindi", "SDN Inpres 2 Tanamodindi"): 1.1383,
+    ("SDN Inpres 1 Tanamodindi", "SD Negeri 23 Palu"): 1.1670,
+    ("SDN Inpres 2 Tanamodindi", "SD Negeri 23 Palu"): 0.0396
+}
+
+def jarak(a, b):
+    return JARAK.get((a, b), JARAK.get((b, a)))
+
+G = nx.Graph()
+G.add_nodes_from(KOORDINAT)
+G.add_weighted_edges_from((a, b, d) for (a, b), d in JARAK.items())
+
+rute = min(
+    ([AWAL, *p, AWAL] for p in itertools.permutations(n for n in KOORDINAT if n != AWAL)),
+    key=lambda r: sum(jarak(a, b) for a, b in zip(r, r[1:]))
+)
+sisi = list(zip(rute, rute[1:]))
+total = sum(jarak(a, b) for a, b in sisi)
+
+print("\nRUTE DISTRIBUSI MBG KOTA PALU")
+for i, (a, b) in enumerate(sisi, 1):
+    print(f"{i}. {a} -> {b} ({jarak(a, b):.2f} km)")
+print("\nUrutan:", " -> ".join(rute))
+print(f"Total jarak: {total:.2f} km")
+
+pos = {n: (lon, lat) for n, (lat, lon) in KOORDINAT.items()}
+offset = {
+    AWAL: (-100, -65), "SDIT Ibnul Mubarok": (115, 50),
+    "SDN Tanamodindi": (145, 0),
+    "SDN Inpres 1 Tanamodindi": (-15, 85),
+    "SDN Inpres 2 Tanamodindi": (-125, 65),
+    "SD Negeri 23 Palu": (115, -85)
+}
+
+fig, ax = plt.subplots(figsize=(13, 9))
+nx.draw_networkx_edges(G, pos, edge_color="gray", alpha=0.4, ax=ax)
+nx.draw_networkx_edges(G.to_directed(), pos, edgelist=sisi,
+                       edge_color="red", width=3, arrows=True,
+                       arrowstyle="-|>", arrowsize=20, ax=ax)
+nx.draw_networkx_nodes(G, pos, node_color="lightgreen",
+                       node_size=850, edgecolors="black", ax=ax)
+
+for n, (x, y) in pos.items():
+    ax.annotate(n, (x, y), xytext=offset[n], textcoords="offset points",
+                ha="center", fontsize=9,
+                bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="gray"),
+                arrowprops=dict(arrowstyle="-", color="black"))
+
+for i, (a, b) in enumerate(sisi):
+    x = (pos[a][0] + pos[b][0]) / 2
+    y = (pos[a][1] + pos[b][1]) / 2
+    ax.annotate(f"{jarak(a, b):.2f} km", (x, y),
+                xytext=(0, 12 if i % 2 == 0 else -12),
+                textcoords="offset points", ha="center", fontsize=8,
+                color="blue", bbox=dict(fc="white", ec="blue"))
+
+ax.set(title="OPTIMASI RUTE DISTRIBUSI MBG KOTA PALU - TSP",
+       xlabel="Longitude", ylabel="Latitude")
+ax.grid(alpha=0.3)
+ax.set_aspect("equal", adjustable="datalim")
+ax.margins(x=0.25, y=0.22)
+plt.tight_layout()
+plt.show()
